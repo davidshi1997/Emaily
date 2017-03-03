@@ -15,7 +15,6 @@ var FB_TOKEN = "EAAPUW3ZAR8yoBALLNeTBMu3cYMFwOE2IL1KNHjwtsZCwqtgUZColj73n7Wbgfx9
 
 var MongoClient = require('mongodb').MongoClient, assert = require('assert');
 
-
 // Process application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({extended: false}))
 
@@ -52,14 +51,15 @@ app.post('/webhook/', function (req, res) {
                     sessionid = result;
 
                     console.log('The sessionid is: %d', sessionid);
-
+		    var hash = crypto.createHash('sha256').update('sender').digest('base64');
+			
                     // Case 1: First time speaking to Emaily
                     if (sessionid == 0) {
                         sendTextMessage(sender, "Hi, I'm Emaily! Your personal email assistant. I can help you check your email, create templates to respond to emails, and set reminders to respond to mail. What's would you like me to call you?");
 
                     	console.log("i just finished sending a message");
 
-                        db.collection('users').update({userId: sender}, {$set:{sessionId: 1}}, function(err, result) {
+                        db.collection('users').update({userId: hash}, {$set:{sessionId: 1}}, function(err, result) {
                             if (err) {
                                 console.log(err);
                             } else {
@@ -71,9 +71,9 @@ app.post('/webhook/', function (req, res) {
 
                     } else if(sessionid == 1) {
                     	db.collection('users').update(
-						   { userId: sender },
+						   { userId: hash },
 						   {
-						   		userId: sender,
+						   		userId: hash,
 						   		name: event.message.text,
 						   		sessionId: 2
 						   }
@@ -168,7 +168,8 @@ function getOrCreateSessionId(db, sender) {
             // Gets collection of users from main database
             var users = db.collection('users');
 
-            users.find( { userId: sender } ).toArray(function (err, result) {
+	    var hash = crypto.createHash('sha256').update('sender').digest('base64');
+            users.find( { userId: hash } ).toArray(function (err, result) {
                 if (err) {
                     console.log(err);
                     return reject(err);
@@ -179,7 +180,7 @@ function getOrCreateSessionId(db, sender) {
                 } else {
                     console.log('No user found! Creating a new user in the database');
 
-                    users.insert({ userId: sender, sessionId: 0 }, function (err, result) {
+                    users.insert({ userId: hash, sessionId: 0 }, function (err, result) {
                       if (err) {
                         console.log(err);
                       } else {
@@ -197,11 +198,12 @@ function getOrCreateSessionId(db, sender) {
 // This method should
 function checkEmailForUnread(db, sender) {
 	return new Promise(
+		MongoClient.connect(URI, function(err, db) {
+		var hash = crypto.createHash('sha256').update('sender').digest('base64');
 		function (resolve, reject) {
 			var users = db.collection('users');
             console.log('I am in promise');
-
-			users.find( { userId: sender } ).toArray(function (err, usrdata) {
+			users.find( { userId: hash } ).toArray(function (err, usrdata) {
                 console.log('I found the userdata');
                 console.log(usrdata);
 				if(err) {
@@ -211,8 +213,8 @@ function checkEmailForUnread(db, sender) {
                     console.log('I found the userdata')
 
 					var imap = new Imap({
-						user: 'alextng1985@gmail.com',
-						password: 'HiEmaily!',
+						user: usrdata[0].email,
+						password: usrdata[0].password,
 						host: 'imap.gmail.com',
 						port: 993,
 						tls: true
@@ -271,7 +273,8 @@ function checkEmailForUnread(db, sender) {
                     imap.connect();
 				}
 			});
-		}
+			db.close();
+		}}
 	);
 }
 
