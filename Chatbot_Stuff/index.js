@@ -51,7 +51,7 @@ app.post('/webhook/', function (req, res) {
                     sessionid = result;
 
                     console.log('The sessionid is: %d', sessionid);
-		    var hash = crypto.createHash('sha256').update('sender').digest('base64');
+		    var hash = crypto.createHash('sha256').update(sender).digest('base64');
 			
                     // Case 1: First time speaking to Emaily
                     if (sessionid == 0) {
@@ -168,7 +168,7 @@ function getOrCreateSessionId(db, sender) {
             // Gets collection of users from main database
             var users = db.collection('users');
 
-	    var hash = crypto.createHash('sha256').update('sender').digest('base64');
+	    var hash = crypto.createHash('sha256').update(sender).digest('base64');
             users.find( { userId: hash } ).toArray(function (err, result) {
                 if (err) {
                     console.log(err);
@@ -199,7 +199,7 @@ function getOrCreateSessionId(db, sender) {
 function checkEmailForUnread(db, sender) {
 	return new Promise(
 		MongoClient.connect(URI, function(err, db) {
-		var hash = crypto.createHash('sha256').update('sender').digest('base64');
+		var hash = crypto.createHash('sha256').update(sender).digest('base64');
 		function (resolve, reject) {
 			var users = db.collection('users');
             console.log('I am in promise');
